@@ -1,0 +1,179 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  MobileAds.instance.initialize();
+  runApp(GoalLiveApp());
+}
+
+class GoalLiveApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Goal Live',
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+      ),
+      home: LiveScoresPage(),
+    );
+  }
+}
+
+class LiveScoresPage extends StatefulWidget {
+  @override
+  _LiveScoresPageState createState() => _LiveScoresPageState();
+}
+
+class _LiveScoresPageState extends State<LiveScoresPage> {
+  List matches = [];
+  bool isLoading = true;
+
+  // AdMob IDs (replace with your own)
+  final String bannerAdUnitId = 'YOUR_BANNER_AD_ID';
+  final String interstitialAdUnitId = 'YOUR_INTERSTITIAL_AD_ID';
+
+  BannerAd? bannerAd;
+  InterstitialAd? interstitialAd;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchLiveScores();
+    loadBannerAd();
+    loadInterstitialAd();
+  }
+
+  void loadBannerAd() {
+    bannerAd = BannerAd(
+      adUnitId: bannerAdUnitId,
+      size: AdSize.banner,
+      request: AdRequest(),
+      listener: BannerAdListener(),
+    )..load();
+  }
+
+  void loadInterstitialAd() {
+    InterstitialAd.load(
+      adUnitId: interstitialAdUnitId,
+      request: AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          interstitialAd = ad;
+        },
+        onAdFailedToLoad: (error) {
+          print('Interstitial failed: $error');
+        },
+      ),
+    );
+  }
+
+  Future fetchLiveScores() async {
+    const apiKey = 'YOUR_API_FOOTBALL_API_KEY';
+
+    final response = await http.get(
+      Uri.parse('https://v3.football.api-sports.io/fixtures?live=all'),
+      headers: {
+        'x-apisports-key': apiKey,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      setState(() {
+        matches = data['response'];
+        isLoading = false;
+      });
+
+      if (interstitialAd != null) {
+        interstitialAd!.show();
+      }
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Goal Live ⚽'),
+        centerTitle: true,
+      ),
+      bottomNavigationBar: bannerAd != null
+          ? Container(
+              height: bannerAd!.size.height.toDouble(),
+              child: AdWidget(ad: bannerAd!),
+            )
+          : SizedBox(),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : matches.isEmpty
+              ? Center(child: Text('No live matches now'))
+              : ListView.builder(
+                  itemCount: matches.length,
+                  itemBuilder: (context, index) {
+                    var match = matches[index];
+
+                    String home = match['teams']['home']['name'];
+                    String away = match['teams']['away']['name'];
+                    int? homeGoals = match['goals']['home'];
+                    int? awayGoals = match['goals']['away'];
+                    String minute =
+                        match['fixture']['status']['elapsed']?.toString() ?? '0';
+
+                    return Card(
+                      margin: EdgeInsets.all(10),
+                      child: ListTile(
+                        title: Text(
+                          '$home vs $away',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          '$homeGoals - $awayGoals   |   ${minute}\'',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: fetchLiveScores,
+        child: Icon(Icons.refresh),
+      ),
+    );
+  }
+}**/build/
+/.dart_tool/
+/.packages
+.idea/
+/.vscode/
+*.iml
+pubspec.lock<uses-permission android:name="android.permission.INTERNET"/>name: goal_live
+description: A live football scores app (Goal Live)
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.18.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^0.13.5
+  google_mobile_ads: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
